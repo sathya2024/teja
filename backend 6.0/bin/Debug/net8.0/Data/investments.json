@@ -1,0 +1,62 @@
+[
+  {
+    "StockName": "AAPL",
+    "DematAccount": "Groww",
+    "PurchaseDate": "2025-05-06T09:40:10.096Z",
+    "NumberOfShares": 20,
+    "Brokerage": 0.1,
+    "BrokerageType": "%",
+    "PurchasePrice": 1000,
+    "RedemptionDate": "2025-05-06T09:40:10.096Z",
+    "SellAt": "string",
+    "SellPrice": 0,
+    "Id": "101",
+    "UserId": 1,
+    "Type": "Stock",
+    "TransactionType": "Buy"
+  },
+  {
+    "StockName": "MSFT",
+    "DematAccount": "Groww",
+    "PurchaseDate": "2025-05-06T09:46:56.676Z",
+    "NumberOfShares": 32,
+    "Brokerage": 0.1,
+    "BrokerageType": "%",
+    "PurchasePrice": 133,
+    "RedemptionDate": "2025-05-06T09:46:56.676Z",
+    "SellAt": "string",
+    "SellPrice": 0,
+    "Id": "9ead27c6-584f-4a55-a08c-e8850a1ddf99",
+    "UserId": 1,
+    "Type": "Stock",
+    "TransactionType": "Buy"
+  },
+  {
+    "FixedIncomeName": "National Savings Bond 2025",
+    "InvestmentDate": "2025-05-06T00:00:00",
+    "InvestmentAmount": 100000,
+    "CouponRate": 7.25,
+    "CompoundingFrequency": "Annual",
+    "InterestType": "Fixed",
+    "MaturityDate": "2030-05-06T00:00:00",
+    "RedemptionDate": null,
+    "SellPrice": null,
+    "Id": "4b3e60ec-2525-45a0-a3ba-22b249455505",
+    "UserId": 1,
+    "Type": "Bond",
+    "TransactionType": "Buy"
+  },
+  {
+    "SchemeName": "Axis Bluechip Fund",
+    "FolioNumber": "AXIS987654",
+    "AmountType": "Lumpsum",
+    "Amount": 15000,
+    "Price": 58.25,
+    "RedemptionDate": null,
+    "SellPrice": null,
+    "Id": "c88f595f-c8f0-4db0-b02a-5cc9d1164408",
+    "UserId": 2,
+    "Type": "MutualFund",
+    "TransactionType": "Buy"
+  }
+]
