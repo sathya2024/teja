@@ -1,8 +1,7 @@
-import { Component } from '@angular/core';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { Component, OnInit } from '@angular/core';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import * as bcrypt from 'bcryptjs';
 
 @Component({
   selector: 'app-signup',
@@ -11,8 +10,8 @@ import * as bcrypt from 'bcryptjs';
   styleUrls: ['./signup.component.css'],
   imports: [CommonModule, ReactiveFormsModule, HttpClientModule],
 })
-export class SignupComponent {
-  constructor(private fb: FormBuilder, private http: HttpClient) {}
+export class SignupComponent implements OnInit {
+  signupForm!: FormGroup; // Declare the form group without initializing it
 
   securityQuestions: string[] = [
     'What was your childhood nickname?',
@@ -22,43 +21,61 @@ export class SignupComponent {
     'What is your favorite book?',
   ];
 
-  signupForm = this.fb.group({
-    name: ['', Validators.required],
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', Validators.required],
-    confirmPassword: ['', Validators.required],
-    securityQuestion: ['', Validators.required],
-    securityAnswer: ['', Validators.required],
-  });
+  constructor(private fb: FormBuilder, private http: HttpClient) {}
 
-  async onSubmit() {
+  ngOnInit(): void {
+    // Initialize the form group in ngOnInit
+    this.signupForm = this.fb.group({
+      name: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+      UserName: ['', Validators.required],
+      Password: ['', Validators.required],
+      confirmPassword: ['', Validators.required],
+      securityQuestion: ['', Validators.required],
+      securityAnswer: ['', Validators.required],
+    });
+  }
+
+    async onSubmit() {
     const form = this.signupForm.value;
-    if (form.password !== form.confirmPassword) {
+  
+    // Check if passwords match
+    if (form.Password !== form.confirmPassword) {
       alert('Passwords do not match');
       return;
     }
-
-    const hashedPassword = await bcrypt.hash(form.password!, 10);
-    const hashedAnswer = await bcrypt.hash(form.securityAnswer!, 10);
-
-    const users: any = await this.http
-      .get('http://localhost:3000/users')
-      .toPromise();
-    const newId = users.length ? Number(users[users.length - 1].id) + 1 : 1; // Ensure newId is a number
-
-    const newUser = {
-      id: newId,
-      Userid: newId, // Ensure Userid is a number
-      name: form.name,
-      email: form.email,
-      password: hashedPassword,
-      securityQuestion: form.securityQuestion,
-      securityAnswer: hashedAnswer,
-    };
-
-    this.http.post('http://localhost:3000/users', newUser).subscribe(() => {
-      alert('Signup successful');
-      this.signupForm.reset();
-    });
+  
+    try {
+      // Create the new user object
+      const newUser = {
+        Id: 0,
+        Name: form.name,
+        Email: form.email,
+        UserName: form.UserName, // Corrected casing
+        Password: form.Password,
+        ConfirmPassword: form.confirmPassword,
+        SecurityQuestion: form.securityQuestion,
+        SecurityAnswer: form.securityAnswer,
+      };
+  
+      console.log('New user:', newUser); // Debugging line to check newUser object
+      console.log('UserName:', form.UserName); // Debugging line to check UserName value
+  
+      // Send the new user object to the backend
+      this.http.post('http://localhost:5154/api/Auth/register', newUser).subscribe({
+        next: (response) => {
+          console.log('Response:', response); // Log the plain text response
+          alert("Successfully registered"); // Display the response message to the user
+          this.signupForm.reset();
+        },
+        error: (error) => {
+          console.error('Signup error:', error);
+          alert('Something went wrong. Please try again.');
+        },
+      });
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('Something went wrong. Please try again.');
+    }
   }
 }

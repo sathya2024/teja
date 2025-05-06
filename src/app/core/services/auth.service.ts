@@ -1,19 +1,32 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { response } from 'express';
+import { tap } from 'rxjs/operators';
+
+
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   public loggedInUser: any = null;
+  private apiUrl = 'http://localhost:5154/api/Auth';
 
-  constructor() {
+  constructor(private http: HttpClient) {
     // Initialize loggedInUser from localStorage
-    const user = localStorage.getItem('loggedInUser');
-    if (user) {
-      this.loggedInUser = JSON.parse(user);
-    }
+    
+  }
+
+  login(credentials: any) {
+    console.log('Login credentials:', credentials); // Debugging log
+    return this.http.post<any>(`${this.apiUrl}/login`, credentials).pipe(
+      tap((response) => {
+        if (response.Token) {
+          localStorage.setItem('token', response.Token);
+        }
+      })
+    );
   }
 
   getUserId(): number {
@@ -22,7 +35,8 @@ export class AuthService {
 
   setUser(user: any): void {
     this.loggedInUser = user;
-    localStorage.setItem('loggedInUser', JSON.stringify(user)); // Store the user in localStorage
+    localStorage.setItem('loggedInUser', JSON.stringify(user));
+    
   }
 
   clearUser(): void {

@@ -1,10 +1,11 @@
-// src/app/features/auth/login/login.component.ts
-import { Component } from '@angular/core';
-import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import * as bcrypt from 'bcryptjs';
+import { AuthService } from '../../../core/services/auth.service';
+import { response } from 'express';
 
 @Component({
   selector: 'app-login',
@@ -13,17 +14,23 @@ import * as bcrypt from 'bcryptjs';
   styleUrls: ['./login.component.css'],
   imports: [CommonModule, ReactiveFormsModule, HttpClientModule, RouterModule],
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
+  loginForm!: FormGroup; // Declare the form group without initializing it
+
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    private auth:AuthService
   ) {}
 
-  loginForm = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', Validators.required],
-  });
+  ngOnInit(): void {
+    // Initialize the form group in ngOnInit
+    this.loginForm = this.fb.group({
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', Validators.required],
+    });
+  }
 
   async onSubmit() {
     if (this.loginForm.invalid) {
@@ -32,34 +39,28 @@ export class LoginComponent {
     }
 
     const { email, password } = this.loginForm.value;
+    const credentials = {
+      email: email,
+      password: password,
+    };
 
     try {
-      const users: any = await this.http
-        .get(`http://localhost:3000/users?email=${email}`)
-        .toPromise();
-      if (
-        users.length &&
-        (await bcrypt.compare(password!, users[0].password))
-      ) {
-        // Store user data in a consistent format
-        const loggedInUser = {
-          userId: Number(users[0].id), // Ensure id is a number
-          id: Number(users[0].id), // Also include as 'id' for backwards compatibility
-          email: users[0].email,
-          name: users[0].name,
-        };
+      this.auth.login(credentials).subscribe({
+        next: (response) => {
+          console.log('Login response:', response); // Log the response for debugging
+          if (response && response.token) {
+            localStorage.setItem('authToken', response.token);
+            console.log(response); // Store the token in localStorage
+            localStorage.setItem('userId', response.userId);
 
-        // Store as both individual items and as a JSON object
-        localStorage.setItem('userId', String(loggedInUser.userId));
-        localStorage.setItem('userEmail', email!);
-        localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser));
-        localStorage.setItem('isLoggedIn', 'true');
-
-        alert('Login successful!');
-        this.router.navigate(['/dashboard']);
-      } else {
-        alert('Invalid email or password');
-      }
+            this.auth.setUser(response.user); // Set the user in AuthService
+            this.router.navigate(['/dashboard']); // Navigate to home page after successful login
+          } else {
+            alert('Invalid credentials. Please try again.');
+          }
+        }
+      });
+      
     } catch (error) {
       console.error('Login error:', error);
       alert('Something went wrong. Please try again.');

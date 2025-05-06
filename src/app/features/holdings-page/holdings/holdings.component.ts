@@ -3,19 +3,30 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service'; // Import the AuthService
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { AddInvestmentComponent } from '../add-investment/add-investment.component'; // Import FormsModule for ngModel
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { AddInvestmentComponent } from '../add-investment/add-investment.component';
+import { InvestmentModalComponent } from '../investment-modal/investment-modal.component';
+import { DeleteConfirmationModalComponent } from '../delete-confirmation-modal/delete-confirmation-modal.component';
 
 @Component({
   selector: 'app-holdings',
   standalone: true,
-  imports: [CommonModule, AddInvestmentComponent, FormsModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    FormsModule,
+    AddInvestmentComponent,
+    ReactiveFormsModule,
+    FormsModule,
+    InvestmentModalComponent,
+    DeleteConfirmationModalComponent,
+  ],
   templateUrl: './holdings.component.html',
   styleUrls: ['./holdings.component.css'],
 })
 export class HoldingsComponent implements OnInit {
   investments: any[] = [];
-  userId: number = 1;
+
   totalInvestmentValue = 0;
   totalInvestmentCost = 0;
   totalGainLoss = 0;
@@ -23,12 +34,13 @@ export class HoldingsComponent implements OnInit {
   perDayGainLoss = 10;
   loading = true;
   error = '';
-  showAddInvestment = false;
-  showEditInvestment = false;
-  selectedInvestment: any | null = null;
+  showInvestmentModal = false;
+  editMode = false;
+  selectedType = 'stock';
+  selectedInvestment = null;
   showDeleteConfirm = false;
   investmentToDelete: any = null;
-
+  userId: number = 0; // Initialize userId
   constructor(
     private http: HttpClient,
     private router: Router,
@@ -36,91 +48,32 @@ export class HoldingsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    console.log('User ID:', this.userId); // Add this to debug
+    console.log('User ID:', this.userId);
+    this.userId = Number(localStorage.getItem('userId'));
     this.loadInvestments();
   }
 
   loadInvestments(): void {
-    this.http.get<any[]>('http://localhost:3000/investments').subscribe({
-      next: (data) => {
-        console.log('Fetched investments:', data); // Debugging line to check data
-        this.investments = data.filter(
-          (inv) => inv.userId === this.userId && inv.transactionType === 'buy'
-        );
-        console.log('Filtered investments:', this.investments); // Log filtered investments
-        this.calculateTotals();
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = 'Failed to load investments';
-        this.loading = false;
-      },
-    });
-  }
-  // Add methods to handle the Add Investment pop-up
-  openAddInvestment(): void {
-    this.selectedInvestment = null;
-    this.showAddInvestment = true;
-    this.showEditInvestment = false;
-  }
-
-  editInvestment(investment: any): void {
-    this.selectedInvestment = { ...investment }; // clone for editing
-    this.showAddInvestment = false;
-    this.showEditInvestment = true;
-  }
-
-  closeAddInvestment(): void {
-    this.showAddInvestment = false;
-    this.showEditInvestment = false;
-    this.selectedInvestment = null;
-  }
-  // Called when delete button is clicked
-  confirmDeleteInvestment(investment: any): void {
-    this.investmentToDelete = investment;
-    this.showDeleteConfirm = true;
-  }
-
-  // Called when user cancels the delete
-  cancelDelete(): void {
-    this.investmentToDelete = null;
-    this.showDeleteConfirm = false;
-  }
-
-  // Called when user confirms the delete
-  deleteInvestment(): void {
-    if (!this.investmentToDelete) return;
     this.http
-      .delete(`http://localhost:3000/investments/${this.investmentToDelete.id}`)
+      .get<any[]>(`http://localhost:5154/api/Investment/user/${this.userId}`)
       .subscribe({
-        next: () => {
-          this.loadInvestments(); // Refresh the list from backend
-          this.showDeleteConfirm = false;
-          this.investmentToDelete = null;
+        next: (data) => {
+          console.log('Fetched investments:', data); // Debugging line to check data
+          // this.investments = data.filter(
+          //   (inv) => inv.userId === this.userId && inv.transactionType === 'buy'
+          // );
+          this.investments = data;
+
+          console.log('Filtered investments:', this.investments); // Log filtered investments
+          this.calculateTotals();
+          this.loading = false;
         },
         error: (err) => {
-          alert('Failed to delete investment.');
-          this.showDeleteConfirm = false;
-          this.investmentToDelete = null;
+          console.error('Error fetching investments:', err); // Log the error
+          this.error = 'Failed to load investments';
+          this.loading = false;
         },
       });
-  }
-
-  saveInvestment(updatedInvestment: any): void {
-    if (this.showEditInvestment) {
-      // Find and update the investment in the array
-      const idx = this.investments.findIndex(
-        (inv) => inv.id === updatedInvestment.id
-      );
-      if (idx !== -1) {
-        this.investments[idx] = updatedInvestment;
-      }
-    } else {
-      this.investments.push(updatedInvestment);
-    }
-    this.calculateTotals();
-    this.loadInvestments();
-    this.closeAddInvestment();
   }
 
   calculateTotals(): void {
@@ -170,5 +123,60 @@ export class HoldingsComponent implements OnInit {
 
   goToTransactions(): void {
     this.router.navigate(['/transactions']);
+  }
+
+  openAddInvestmentModal() {
+    this.editMode = false;
+    this.selectedType = 'stock';
+    this.selectedInvestment = null;
+    this.showInvestmentModal = true;
+  }
+
+  openEditInvestmentModal(inv: any) {
+    this.editMode = true;
+    this.selectedType = inv.type;
+    this.selectedInvestment = { ...inv };
+    this.showInvestmentModal = true;
+  }
+
+  closeInvestmentModal() {
+    this.showInvestmentModal = false;
+  }
+
+  handleInvestmentSave(event: any) {
+    const payload = {
+      ...event,
+      transactionType: event.transactionType || 'Buy', // Ensure valid transactionType
+      userId: this.userId, // Include userId
+    };
+
+    if (this.editMode) {
+      this.http
+        .put(`http://localhost:5154/api/Investment/${event.id}`, payload)
+        .subscribe({
+          next: () => this.loadInvestments(),
+          error: (err) => console.error('Error updating investment:', err),
+        });
+    } else {
+      this.http
+        .post(`http://localhost:5154/api/Investment/stock`, payload)
+        .subscribe({
+          next: () => this.loadInvestments(),
+          error: (err) => console.error('Error adding investment:', err),
+        });
+    }
+    this.closeInvestmentModal();
+    console.log('Payload being sent:', payload);
+  }
+
+  confirmDelete(inv: any) {
+    this.investmentToDelete = inv;
+    this.showDeleteConfirm = true;
+  }
+
+  deleteInvestment() {
+    // this.investmentService.deleteInvestment(this.investmentToDelete.id).subscribe(() => this.loadInvestments());
+    this.showDeleteConfirm = false;
+    this.loadInvestments(); // Refresh after delete
   }
 }
